@@ -1,4 +1,4 @@
-const STORE_KEY = 'masterpieceStudio'
+const STORE_KEY = 'masterpieceStudioReworked'
 const $ = id => document.getElementById(id)
 
 const view = {
@@ -12,6 +12,49 @@ const view = {
 
 let opened = null
 let sizeTimer = null
+let showToken = 0
+
+// The picture is drawn clean here; the visible canvas shows it with the Quality setting applied.
+const clean = document.createElement('canvas')
+clean.width = WIDTH
+clean.height = HEIGHT
+
+function quality () {
+  return Number($('quality').value) / 100
+}
+
+// Lower quality = run the picture through JPEG compression, so it gets that compressed look. 100 leaves it untouched.
+async function withQuality () {
+  const q = quality()
+  if (q >= 1) return clean
+  const img = new Image()
+  img.src = clean.toDataURL('image/jpeg', q)
+  await img.decode()
+  const out = document.createElement('canvas')
+  out.width = WIDTH
+  out.height = HEIGHT
+  const ctx = out.getContext('2d')
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, WIDTH, HEIGHT)
+  ctx.drawImage(img, 0, 0)
+  return out
+}
+
+// The layer picture, written the way the game writes its own.
+async function makePng () {
+  const out = await withQuality()
+  const data = out.getContext('2d').getImageData(0, 0, WIDTH, HEIGHT).data
+  return encodePng(data, WIDTH, HEIGHT)
+}
+
+async function show () {
+  const token = ++showToken
+  const out = await withQuality()
+  if (token !== showToken) return
+  const ctx = $('canvas').getContext('2d')
+  ctx.clearRect(0, 0, WIDTH, HEIGHT)
+  ctx.drawImage(out, 0, 0)
+}
 
 function load () {
   try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {} } catch (_) { return {} }
@@ -26,7 +69,7 @@ function toast (text) {
   t.textContent = text
   t.classList.add('show')
   clearTimeout(toast.timer)
-  toast.timer = setTimeout(() => t.classList.remove('show'), 1600)
+  toast.timer = setTimeout(() => t.classList.remove('show'), 3200)
 }
 
 function setHint (el, text, kind = '') {
@@ -76,8 +119,7 @@ function geometry () {
 }
 
 function render () {
-  const canvas = $('canvas')
-  const ctx = canvas.getContext('2d')
+  const ctx = clean.getContext('2d')
   ctx.clearRect(0, 0, WIDTH, HEIGHT)
   $('drop').classList.toggle('hidden', !!view.img)
   $('frame').classList.toggle('grab', !!view.img && view.fit !== 'stretch')
@@ -88,6 +130,8 @@ function render () {
   $('pickImg').textContent = view.img ? 'Replace image…' : 'Choose image…'
   $('swapHint').style.display = view.img ? '' : 'none'
   if (!view.img) {
+    showToken++
+    $('canvas').getContext('2d').clearRect(0, 0, WIDTH, HEIGHT)
     $('outInfo').textContent = ''
     return
   }
@@ -104,14 +148,12 @@ function render () {
   }
   ctx.drawImage(view.img, g.x, g.y, g.w, g.h)
 
+  show()
   clearTimeout(sizeTimer)
-  sizeTimer = setTimeout(() => {
-    canvas.toBlob(b => { if (b) $('outInfo').textContent = `760 × 460 JPEG · ${formatBytes(b.size)}` }, 'image/jpeg', quality())
+  sizeTimer = setTimeout(async () => {
+    const png = await makePng()
+    $('outInfo').textContent = `${WIDTH} × ${HEIGHT} PNG layer · ${formatBytes(png.length)}`
   }, 150)
-}
-
-function quality () {
-  return Number($('quality').value) / 100
 }
 
 function loadImageFile (file) {
@@ -123,7 +165,7 @@ function loadImageFile (file) {
     view.name = file.name || 'pasted image'
     resetView()
     $('srcInfo').textContent = `${view.name} · ${img.width} × ${img.height}`
-    if (img.width < WIDTH || img.height < HEIGHT) $('srcInfo').textContent += ' · smaller than 760 × 460, may look blurry'
+    if (img.width < WIDTH || img.height < HEIGHT) $('srcInfo').textContent += ` · smaller than ${WIDTH} × ${HEIGHT}, may look blurry`
   }
   img.onerror = () => toast('Could not read that image.')
   img.src = url
@@ -163,15 +205,14 @@ async function saveMasterpiece () {
   const uuid = checkUuid($('uuid'), $('uuidHint'))
   if (!uuid) return toast('Enter your player uuid first.')
   const type = $('type').value
-  const blob = await new Promise(resolve => $('canvas').toBlob(resolve, 'image/jpeg', quality()))
-  const jpeg = NodeBuffer.from(await blob.arrayBuffer())
   try {
-    const file = encode(jpeg, uuid, type)
-    const check = decode(file, uuid)
-    if (!check.image.equals(jpeg)) throw new Error('Self-check failed.')
+    const png = await makePng()
+    const file = encode(encodeLayers({ png }), uuid, type)
+    const check = readArt(decode(file, uuid).image)
+    if (check.layers.length !== 1 || !check.layers[0].image.equals(png)) throw new Error('Self-check failed.')
     const ext = TYPES[type].ext
     download(`masterpiece-${Date.now()}.${ext}`, file, 'application/octet-stream')
-    toast(`Saved .${ext} (${formatBytes(file.length)})`)
+    toast(`Saved .${ext} for ${uuid.slice(0, 8)}… (${formatBytes(file.length)})`)
   } catch (err) {
     toast(err.message)
   }
@@ -188,23 +229,53 @@ function showOpened () {
   ctx.drawImage(opened.img, 0, 0, WIDTH, HEIGHT)
 }
 
+const sniff = b => (b[0] === 0x89 && b[1] === 0x50 ? 'image/png' : 'image/jpeg')
+
+function loadPicture (bytes, mime) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error('Unlocked, but the picture inside is damaged.'))
+    img.src = URL.createObjectURL(new Blob([bytes], { type: mime }))
+  })
+}
+
+// Stacks the layers (bottom first) on white into one picture.
+async function flatten (art) {
+  const pics = []
+  for (const l of art.layers) pics.push(await loadPicture(l.image, sniff(l.image)))
+  const w = pics[0].width
+  const h = pics[0].height
+  const c = document.createElement('canvas')
+  c.width = w
+  c.height = h
+  const ctx = c.getContext('2d')
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, w, h)
+  art.layers.forEach((l, i) => {
+    if (!l.visible) return
+    ctx.globalAlpha = l.opacity
+    ctx.drawImage(pics[i], 0, 0)
+  })
+  ctx.globalAlpha = 1
+  const blob = await new Promise(resolve => c.toBlob(resolve, 'image/png'))
+  const bytes = NodeBuffer.from(await blob.arrayBuffer())
+  return { img: await loadPicture(bytes, 'image/png'), bytes, w, h }
+}
+
 async function openFile (file) {
   if (!file) return
   const uuid = checkUuid($('openUuid'))
   if (!uuid) return toast('Enter the owner uuid first.')
   try {
-    const bytes = NodeBuffer.from(await file.arrayBuffer())
-    const { image, type } = decode(bytes, uuid)
-    const isPng = image[0] === 0x89 && image[1] === 0x50
-    const mime = isPng ? 'image/png' : 'image/jpeg'
-    const img = new Image()
-    img.onload = () => {
-      opened = { img, image, mime, name: file.name }
-      $('openInfo').textContent = `${file.name} · ${type || 'unknown type'} · ${img.width} × ${img.height} · ${isPng ? 'PNG' : 'JPEG'} · ${formatBytes(image.length)}`
-      showOpened()
-    }
-    img.onerror = () => toast('Unlocked, but the picture inside is damaged.')
-    img.src = URL.createObjectURL(new Blob([image], { type: mime }))
+    const { image, type } = decode(NodeBuffer.from(await file.arrayBuffer()), uuid)
+    const art = readArt(image)
+    const flat = await flatten(art)
+    opened = { img: flat.img, image: flat.bytes, mime: 'image/png', name: file.name }
+    const n = art.layers.length
+    const kind = art.layered ? `${n} layer${n === 1 ? '' : 's'}` : 'old format'
+    $('openInfo').textContent = `${file.name} · ${type || 'unknown type'} · ${flat.w} × ${flat.h} · ${kind} · ${formatBytes(image.length)}`
+    showOpened()
   } catch (err) {
     opened = null
     showOpened()

@@ -329,7 +329,7 @@ const PATCHES = {
     ['backgroundColor: "#F5C86D"', 'backgroundColor: "#0b0b0c"']
   ],
   'gui/index.html': [
-    ['<title>Animal Jam Classic</title>', '<title>JR</title>\n    <script src="jr-skin.js"></script>\n    <script src="jr-ingame.js"></script>']
+    ['<title>Animal Jam Classic</title>', '<title>JRR</title>\n    <script src="jr-skin.js"></script>\n    <script src="jr-ingame.js"></script>']
   ],
   'gui/gamePreload.js': [
     ['ipcRenderer.on("redirect-url", (event, url) => {', JR_GAME_PRELOAD + 'ipcRenderer.on("redirect-url", (event, url) => {']

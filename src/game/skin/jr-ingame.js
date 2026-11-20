@@ -166,7 +166,7 @@
     /* ---- JR button ---- */
     const btn = el('button', 'jr-btn')
     const dot = el('span', 'dot')
-    btn.append(dot, el('span', null, 'JR'))
+    btn.append(dot, el('span', null, 'JRR'))
     btn.title = 'JR (Ctrl+K for commands)'
     btn.onclick = () => (panel.classList.contains('open') ? closePanel() : openPanel())
 
@@ -185,14 +185,14 @@
     const panel = el('div', 'panel')
     const head = el('div', 'head')
     const who = el('div', 'who')
-    const whoName = el('b', null, 'JR')
+    const whoName = el('b', null, 'JRR')
     const whoLine = el('span', null, 'Connecting to JR…')
     who.append(whoName, whoLine)
-    const showJR = el('button', 'icon-btn', '↗'); showJR.title = 'Open the JR window'
+    const showJR = el('button', 'icon-btn', '↗'); showJR.title = 'Open the JRR window'
     showJR.onclick = run(async () => { await act({ action: 'showJR' }) })
     const close = el('button', 'icon-btn', '✕'); close.title = 'Close (Esc)'
     close.onclick = () => closePanel()
-    head.append(el('div', 'logo', 'JR'), who, showJR, close)
+    head.append(el('div', 'logo', 'JRR'), who, showJR, close)
     const tabs = el('div', 'tabs')
     const tabButtons = {}
     for (const [id, label] of TABS) {
@@ -265,8 +265,8 @@
     function render () {
       for (const [id] of TABS) tabButtons[id].classList.toggle('on', id === tab)
       if (!state) {
-        whoName.textContent = 'JR'
-        whoLine.textContent = 'JR isn’t answering. Is the JR window open?'
+        whoName.textContent = 'JRR'
+        whoLine.textContent = 'JRR isn’t answering. Is the JRR window open?'
         body.replaceChildren(el('div', 'empty', 'JR isn’t answering right now.'))
         return
       }
@@ -415,8 +415,8 @@
         for (const [i, r] of state.rooms.entries()) if (i > 0 && hit(`${r.title} ${r.name}`)) items.push({ kind: 'Room', what: `Go to ${r.title}`, go: async () => { await act({ action: 'joinRoom', name: r.name }); say(`Going to ${r.title}…`) } })
         for (const s of state.settings) if (hit(s.label)) items.push({ kind: 'Setting', what: `Turn ${s.label} ${s.value ? 'off' : 'on'}`, go: async () => { await act({ action: 'setting', key: s.key, value: !s.value }); say(`${s.label} ${s.value ? 'off' : 'on'}.`) } })
       }
-      for (const [id, label] of TABS) if (hit(`${label} panel`)) items.push({ kind: 'JR', what: `Show ${label}`, go: async () => openPanel(id) })
-      if (hit('open jr window')) items.push({ kind: 'JR', what: 'Open the JR window', go: async () => act({ action: 'showJR' }) })
+      for (const [id, label] of TABS) if (hit(`${label} panel`)) items.push({ kind: 'JRR', what: `Show ${label}`, go: async () => openPanel(id) })
+      if (hit('open jr window')) items.push({ kind: 'JRR', what: 'Open the JRR window', go: async () => act({ action: 'showJR' }) })
       if (query.length >= 2) items.push({ kind: 'Worth', what: `Worth of “${q.trim()}”`, go: async () => { openPanel('worth'); worthQuery = q.trim(); await loadWorth(q.trim()) } })
       return items.slice(0, 40)
     }

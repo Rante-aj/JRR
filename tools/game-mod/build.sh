@@ -18,7 +18,7 @@ here="$(cd "$(dirname "$0")" && pwd)"
 ffdec="$here/../ffdec/ffdec-cli.jar"
 work="${JR_MOD_WORK:-$HOME/.jr-game-mod}/$(basename "$2")"
 step="${3:-all}"
-classes=XtReplyDemuxer,gui.MySettings,gui.itemWindows.ItemWindowToggle,gui.itemWindows.ItemWindowBase,avatar.NameBar,avatar.UserInfo,gui.AvatarEditor,shop.Shop,gui.RecycleItems,gui.DenSwitcher,gui.AvatarSwitcher,gui.AdventureJoin,gui.AchievementViewer,gui.PetInventory,gui.MasterpiecePreview,gui.TradeManager,gui.DenEditor,game.miniGame_Memory.MiniGame_Memory,gui.GuiManager,gui.VolumeSelector,game.artStudioPainting.ArtStudioPainting,gui.ColorTable,avatar.AvatarView,com.sbi.graphics.LayerBitmap
+classes=XtReplyDemuxer,gui.MySettings,gui.itemWindows.ItemWindowToggle,gui.itemWindows.ItemWindowBase,avatar.NameBar,avatar.UserInfo,gui.AvatarEditor,shop.Shop,gui.RecycleItems,gui.DenSwitcher,gui.AvatarSwitcher,gui.AdventureJoin,gui.AchievementViewer,gui.PetInventory,gui.MasterpiecePreview,gui.TradeManager,gui.DenEditor,game.miniGame_Memory.MiniGame_Memory,gui.GuiManager,gui.VolumeSelector,game.artStudioPainting.ArtStudioPainting,gui.ColorTable,avatar.AvatarView,com.sbi.graphics.LayerBitmap,gui.DenAndClothesItemSelect,shop.ShopToSell,buddy.BuddyCard,buddy.BuddyList,gui.ECardCreation
 if [ "$step" = all ] || [ "$step" = export ]; then
   rm -rf "$work"
   java -Xmx2200m -jar "$ffdec" -onerror ignore -selectclass "$classes" -export script "$work/src" "$1"

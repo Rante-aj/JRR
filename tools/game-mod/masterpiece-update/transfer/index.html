@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Masterpiece User Transfer</title>
+<style>
+:root{--bg:#16171f;--panel:#1e1f2e;--bd:rgba(156,163,175,.2);--fg:#e2e8f0;--mut:rgba(255,255,255,.5);--ac:#34d399;--err:#ef4444;--mono:"SF Mono",Consolas,monospace}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{display:flex;justify-content:center;padding:20px;overflow:auto}main{width:100%;max-width:520px}
+h1{font-size:15px;margin:0 0 4px;display:flex;align-items:center;gap:8px}h1 i{width:8px;height:8px;border-radius:50%;background:var(--ac)}
+p{color:var(--mut);margin:0 0 16px;line-height:1.5}
+#drop{border:2px dashed var(--bd);border-radius:8px;padding:24px;text-align:center;cursor:pointer;background:var(--panel);transition:border-color .15s}
+#drop span{color:var(--mut)}#drop.over,#drop.has{border-color:var(--ac)}
+label{display:block;font-size:11px;color:var(--mut);margin:14px 0 5px}
+.row{display:flex;gap:6px}input[type=text]{flex:1;min-width:0;padding:8px 9px;border:1px solid var(--bd);border-radius:5px;background:var(--panel);color:#fff;font:11px var(--mono)}
+input.bad{border-color:var(--err)}input:focus{outline:none;border-color:var(--ac)}
+.btn{padding:7px 11px;border:1px solid var(--bd);border-radius:5px;background:var(--panel);color:var(--fg);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:rgba(156,163,175,.4)}
+#go{margin-top:18px;width:100%;padding:11px;border:0;border-radius:6px;background:var(--ac);color:#0b0c10;font-weight:700;font-size:13px;cursor:pointer}#go:disabled{opacity:.45;cursor:default}
+#msg{margin-top:14px;min-height:20px;line-height:1.5}.ok{color:var(--ac)}.bad{color:var(--err)}
+.note{margin-top:18px;font-size:11px;color:var(--mut);line-height:1.5}
+</style></head><body><main>
+<h1><i></i> Masterpiece User Transfer</h1>
+<p>Move a masterpiece file (.ajart / .ajgart) from one account to another. You need the uuid of the account that made it.</p>
+<div id="drop"><b id="dt">Drop a masterpiece file here</b><br><span>or click to choose one</span></div>
+<input type="file" id="f" accept=".ajart,.ajgart" style="display:none">
+<label for="o">OLD uuid (account that made it)</label>
+<div class="row"><input type="text" id="o" spellcheck="false" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"><button class="btn" id="od" title="Use the account you are logged into">Detect</button></div>
+<label for="n">NEW uuid (account that will use it)</label>
+<div class="row"><input type="text" id="n" spellcheck="false" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"><button class="btn" id="nd" title="Use the account you are logged into">Detect</button></div>
+<div style="margin-top:8px"><button class="btn" id="swap">Swap old / new</button></div>
+<button id="go" disabled>Create transferred file</button>
+<div id="msg"></div>
+<div class="note">Tip: log into the NEW account and press Detect next to NEW. The old account's uuid can't be recovered from the file, so keep it somewhere safe. Only move art you made or have the right to use.</div>
+</main><script src="retie.js"></script><script src="index.js"></script></body></html>

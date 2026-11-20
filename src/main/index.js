@@ -22,7 +22,7 @@ const UI = path.join(ROOT, 'src', 'ui')
 const ASSETS = path.join(ROOT, 'assets')
 const isDev = !app.isPackaged
 
-app.setName('JR')
+app.setName("JRR")
 app.setAppUserModelId('com.bradyslabs.jr')
 const isMac = process.platform === 'darwin'
 // Windows: no menu bar. Mac: the standard app, Edit and Window menus, which
@@ -155,7 +155,7 @@ function openProfile (id) {
   // Reopen where this profile's window was last time.
   const saved = (appSettings().windowBounds || {})[id]
   // Mac buttons sit just right of the side rail, in the title bar.
-  const win = new BrowserWindow({ ...WINDOW_BASE, ...macButtons(76), width: 1100, height: 720, ...placement(saved), minWidth: 860, minHeight: 600, title: `JR · ${profile.name}`, webPreferences: prefs })
+  const win = new BrowserWindow({ ...WINDOW_BASE, ...macButtons(76), width: 1100, height: 720, ...placement(saved), minWidth: 860, minHeight: 600, title: `JRR · ${profile.name}`, webPreferences: prefs })
   win.loadFile(path.join(UI, 'app.html'), { query: { profile: id } })
   win.once('ready-to-show', () => { if (saved && saved.maximized) win.maximize(); win.show() })
   win.on('close', () => rememberBounds(id, win))
@@ -291,7 +291,7 @@ function registerIpc () {
   // Report a bug: save the report where the user picks (Downloads by default).
   handle('bugreport:save', async (e, text, name) => {
     const win = BrowserWindow.fromWebContents(e.sender)
-    const safe = String(name || 'JR-bug-report.txt').replace(/[^\w.-]+/g, '-')
+    const safe = String(name || 'JRR-bug-report.txt').replace(/[^\w.-]+/g, '-')
     const result = await dialog.showSaveDialog(win, {
       title: 'Save bug report',
       defaultPath: path.join(app.getPath('downloads'), safe),
@@ -383,7 +383,7 @@ async function checkForMacUpdate () {
     const latest = String(release.tag_name || '').replace(/^v/, '')
     if (!isNewer(latest, app.getVersion()) || macUpdateShown === latest) return
     macUpdateShown = latest
-    const note = new Notification({ title: `JR ${latest} is out`, body: 'Click to download it. Install it over this one; your profiles stay.' })
+    const note = new Notification({ title: `JRR ${latest} is out`, body: 'Click to download it. Install it over this one; your profiles stay.' })
     note.on('click', () => shell.openExternal(release.html_url || `https://github.com/${config.github.owner}/${config.github.repo}/releases/latest`))
     note.show()
   } catch (_) {}

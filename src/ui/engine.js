@@ -282,7 +282,7 @@ module.exports = function createEngine (info) {
      */
     /** Rooms you've been in since logging in, newest first: [{ name, id, at, den }]. */
     recentRooms: () => recentRooms.map(r => ({ ...r })),
-    notify: ({ title = 'JR', body = '', force = false } = {}) => {
+    notify: ({ title = 'JRR', body = '', force = false } = {}) => {
       if (!settings.notifications) return false
       events.emit('notify', { title: String(title), body: String(body), force: !!force })
       return true
@@ -419,7 +419,7 @@ module.exports = function createEngine (info) {
   /* ------------------------------------------------------------ lifecycle */
 
   async function start () {
-    log({ type: 'notify', message: `JR ${info.version} (test build) · profile ${info.profile.name}` })
+    log({ type: 'notify', message: `JRR ${info.version} (test build) · profile ${info.profile.name}` })
     await proxy.listen()
     await gameServer.listen()
     log({ type: 'notify', message: `Game proxy ready on port ${proxy.port}.` })

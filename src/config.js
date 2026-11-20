@@ -10,10 +10,10 @@ module.exports = {
     clientId: '1561120591308918874',
     guildId: '1553869410459062354',
     requiredRoleId: null,
-    invite: 'https://discord.gg/ENu6SpVrwn'
+    invite: 'https://discord.gg/cPEkEnBNVX'
   },
 
-  github: { owner: 'BradysLabs', repo: 'JR' },
+  github: { owner: 'Rante-aj', repo: 'JRR' },
 
   // Packets plugins may send to the server each second, by default.
   packetsPerSecond: 20

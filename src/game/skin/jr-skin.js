@@ -123,7 +123,7 @@
   }
   const title = () => {
     const name = profileName()
-    const want = name ? `JR · ${name}` : 'JR'
+    const want = name ? `JRR · ${name}` : 'JRR'
     if (document.title !== want) document.title = want
   }
   title()
@@ -139,7 +139,7 @@
     if (!head) {
       head = document.createElement('div')
       head.className = 'jr-head'
-      head.innerHTML = '<div class="jr-logo">JR</div><div class="jr-title">Sign in to Animal Jam</div><div class="jr-sub">Use your Animal Jam username and password. JR never sees your password.</div><div class="jr-chip" hidden><i></i><span></span></div>'
+      head.innerHTML = '<div class="jr-logo">JRR</div><div class="jr-title">Sign in to Animal Jam</div><div class="jr-sub">Use your Animal Jam username and password. JRR never sees your password.</div><div class="jr-chip" hidden><i></i><span></span></div>'
       container.prepend(head)
     }
     const name = profileName()

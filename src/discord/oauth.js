@@ -68,7 +68,7 @@ function waitForCallback ({ redirectUri, state, timeoutMs = 5 * 60 * 1000, page 
   })
 }
 
-const simplePage = (msg) => `<!doctype html><meta charset="utf-8"><title>JR</title><body style="margin:0;background:#0b0b0c;color:#ededee;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh"><div style="text-align:center"><div style="width:56px;height:56px;border-radius:14px;background:#ededee;color:#0b0b0c;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:20px">JR</div><p style="font-size:18px;margin-top:20px">${msg}</p></div></body>`
+const simplePage = (msg) => `<!doctype html><meta charset="utf-8"><title>JRR</title><body style="margin:0;background:#0b0b0c;color:#ededee;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh"><div style="text-align:center"><div style="width:56px;height:56px;border-radius:14px;background:#ededee;color:#0b0b0c;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:20px">JR</div><p style="font-size:18px;margin-top:20px">${msg}</p></div></body>`
 
 /** POSTs to Discord's token endpoint (form encoded, no client secret). */
 async function tokenRequest (fetchImpl, tokenUrl, form) {

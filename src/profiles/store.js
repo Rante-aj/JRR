@@ -84,7 +84,7 @@ class ProfileStore {
 
   /** Deletes a profile and all of its data. Refuses while it's open. */
   remove (id) {
-    if (this.isOpen(id)) throw new Error('Close that profile\'s JR window first.')
+    if (this.isOpen(id)) throw new Error('Close that profile\'s JRR window first.')
     const all = this._all()
     if (!all.some(p => p.id === id)) return false
     this._save(all.filter(p => p.id !== id))
@@ -107,7 +107,7 @@ class ProfileStore {
     const dir = this.dirOf(id)
     fs.mkdirSync(dir, { recursive: true })
     const lock = path.join(dir, 'profile.lock')
-    if (openHere.has(dir)) throw new Error(`"${profile.name}" is already open in another JR window.`)
+    if (openHere.has(dir)) throw new Error(`"${profile.name}" is already open in another JRR window.`)
 
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
@@ -117,7 +117,7 @@ class ProfileStore {
         if (error.code !== 'EEXIST') throw error
         const owner = Number(readText(lock))
         if (owner && owner !== process.pid && isRunning(owner) && isFresh(lock)) {
-          throw new Error(`"${profile.name}" is already open in another JR window.`)
+          throw new Error(`"${profile.name}" is already open in another JRR window.`)
         }
         // Left behind by a JR that crashed (or by us): take it over.
         fs.rmSync(lock, { force: true })

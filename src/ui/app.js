@@ -988,12 +988,12 @@ function renderSettings () {
       b.onclick = attempt(async () => { info.richPresence = await ipcRenderer.invoke('presence:enabled', info.richPresence === false) ; b.classList.toggle('on', info.richPresence !== false) })
       return b
     })()),
-    row(g.disabled ? 'Discord check is off' : g.user ? `Signed in as ${g.user.globalName || g.user.username}` : 'Signed in', 'JR is for members of the JR Discord server.', button('JR Discord', () => ipcRenderer.invoke('open-url', info.invite)))
+    row(g.disabled ? 'Discord check is off' : g.user ? `Signed in as ${g.user.globalName || g.user.username}` : 'Signed in', 'JR and JRR are for members of the JR Discord server.', button('JR Discord', () => ipcRenderer.invoke('open-url', info.invite)))
   ])
   group('ABOUT', [
     row('Report a bug', 'Saves your recent logs to a file you can send in the JR Discord.', button('Report a bug', () => openBugReport())),
-    row('What\u2019s new', `Everything new in JR ${info.version}.`, button('What\u2019s new', () => showNews(true))),
-    row(`JR ${info.version}`, 'Made by BradysLabs. Not affiliated with WildWorks.', button('Developer tools', () => ipcRenderer.send('win', 'devtools')))
+    row('What\u2019s new', `Everything new in JRR ${info.version}.`, button('What\u2019s new', () => showNews(true))),
+    row(`JRR ${info.version}`, 'Made by Rante, based on JR by BradysLabs. Not affiliated with WildWorks.', button('Developer tools', () => ipcRenderer.send('win', 'devtools')))
   ])
 }
 
@@ -1073,7 +1073,7 @@ function showNews (always) {
   try { notes = JSON.parse(require('fs').readFileSync(path.join(info.root, 'src', 'ui', 'whats-new.json'), 'utf8')) } catch (_) {}
   news = qol.whatsNewFor(notes, info.version, always ? null : engine.settings.lastSeenVersion)
   if (!news) { if (always) toast('No notes for this version.'); return }
-  $('newsTitle').textContent = `What\u2019s new in JR ${news.version}`
+  $('newsTitle').textContent = `What\u2019s new in JRR ${news.version}`
   const list = $('newsList')
   list.innerHTML = ''
   for (const it of news.items) {

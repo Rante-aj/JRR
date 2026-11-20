@@ -1,0 +1,9 @@
+{
+  "name": "Masterpiece User Transfer",
+  "description": "Move a masterpiece file (.ajart / .ajgart) from one account to another.",
+  "category": "Customize",
+  "icon": "fa-exchange-alt",
+  "author": "Rante",
+  "main": "index.html",
+  "type": "ui"
+}

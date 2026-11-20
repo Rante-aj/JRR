@@ -4,6 +4,7 @@
  *
  * A step is { to: 'server' | 'game', text, delay } where delay is seconds to
  * wait after sending. {room} in a packet becomes your current room.
+ * toText / fromText: the list as shareable text (import / export).
  */
 (function (root, factory) {
   const api = factory()
@@ -79,5 +80,39 @@
     }
   }
 
-  return { splitPackets, fill, sendOne, run, MIN_DELAY }
+  /**
+   * The list as text, one step per line: "<server|game> <seconds> <packet>".
+   * Easy to read, share and edit by hand.
+   */
+  function toText (steps) {
+    return (steps || []).map(s => `${s.to === 'game' ? 'game' : 'server'} ${Number(s.delay) || 0} ${s.text}`).join('\n')
+  }
+
+  /**
+   * Reads a list back: that text format, a JSON list of steps, or plain packets
+   * (one per line; those go to the server with a 1 second wait).
+   * @returns {{to: string, text: string, delay: number}[]}
+   */
+  function fromText (text) {
+    const raw = String(text || '').trim()
+    if (!raw) return []
+    if (raw[0] === '[' || raw[0] === '{') {
+      try {
+        const data = JSON.parse(raw)
+        const list = Array.isArray(data) ? data : (Array.isArray(data.steps) ? data.steps : [])
+        return list.filter(s => s && String(s.text || '').trim()).map(s => ({
+          to: s.to === 'game' ? 'game' : 'server',
+          text: String(s.text).trim(),
+          delay: Math.max(MIN_DELAY, Number(s.delay) || 1)
+        }))
+      } catch (_) { /* not JSON: read it as lines */ }
+    }
+    return splitPackets(raw).map(line => {
+      const m = /^(server|game|self|my\s+game|client)\s+(\d+(?:\.\d+)?)s?\s+(\S.*)$/i.exec(line)
+      if (m) return { to: /^server$/i.test(m[1]) ? 'server' : 'game', text: m[3].trim(), delay: Math.max(MIN_DELAY, Number(m[2])) }
+      return { to: 'server', text: line, delay: 1 }
+    })
+  }
+
+  return { splitPackets, fill, sendOne, run, toText, fromText, MIN_DELAY }
 })

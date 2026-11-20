@@ -37,7 +37,19 @@
     .sp { flex: 1; }
     .list { flex: 1; min-height: 80px; overflow: auto; border: 1px solid var(--line); border-radius: 12px; }
     .empty { color: var(--faint); padding: 18px; text-align: center; font-size: 12.5px; }
-    .step { display: grid; grid-template-columns: 54px 1fr 54px 28px; gap: 8px; align-items: center; padding: 7px 10px; border-top: 1px solid var(--line); }
+    .step { display: grid; grid-template-columns: 18px 92px 1fr 78px 28px; gap: 8px; align-items: center; padding: 6px 10px; border-top: 1px solid var(--line); }
+    .step .grip { cursor: grab; color: var(--faint); user-select: none; text-align: center; font-size: 14px; letter-spacing: -2px; }
+    .step.dragging { opacity: 0.4; }
+    .step.drop-above { box-shadow: inset 0 2px 0 #a6a6ac; }
+    .step.drop-below { box-shadow: inset 0 -2px 0 #a6a6ac; }
+    .step select, .step input { height: 28px; padding: 3px 7px; border-radius: 7px; font-size: 12px; }
+    .step input.pk { width: 100%; font-family: ui-monospace, "JetBrains Mono", Consolas, monospace; }
+    .step input.dl { width: 100%; }
+    .step .dlw { display: flex; align-items: center; gap: 4px; color: var(--faint); font-size: 12px; }
+    #io { display: none; flex-direction: column; gap: 8px; border: 1px solid var(--line2); border-radius: 12px; padding: 10px; }
+    #io.open { display: flex; }
+    #io textarea { min-height: 80px; }
+    .hint { color: var(--faint); font-size: 12px; }
     .step:first-child { border-top: 0; }
     .step.active { background: #1a1a1d; }
     .step .to { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.4px; }
@@ -52,7 +64,7 @@
 <body>
   <div>
     <h1>Packet Spammer</h1>
-    <div class="sub">One packet per line. <code>{room}</code> becomes your current room.</div>
+    <div class="sub">One packet per line. <code>{room}</code> becomes your current room. In the list: drag ⋮⋮ to reorder, change any line in place.</div>
   </div>
 
   <textarea id="packets" spellcheck="false" placeholder="%xt%o%qat%{room}%questready%0%"></textarea>
@@ -75,11 +87,25 @@
   <div class="row">
     <label><input id="loop" type="checkbox"> Repeat the list</label>
     <span class="sp"></span>
+    <button id="import">Import</button>
+    <button id="export">Export</button>
     <button id="clear">Clear list</button>
     <button id="stop" disabled>Stop</button>
     <button id="run" class="primary">Run list</button>
   </div>
 
+  <div id="io">
+    <div class="hint">Paste a list (or choose a file). One packet per line: <code>server 1 %xt%...%</code> or <code>game 0.5 %xt%...%</code>; plain packets go to the server with a 1 s wait.</div>
+    <textarea id="ioText" spellcheck="false"></textarea>
+    <div class="row">
+      <button id="ioFile">Choose file…</button>
+      <input id="ioPick" type="file" accept=".txt,.json,text/plain,application/json" style="display:none">
+      <span class="sp"></span>
+      <button id="ioCancel">Cancel</button>
+      <button id="ioAdd">Add to list</button>
+      <button id="ioReplace" class="primary">Replace list</button>
+    </div>
+  </div>
   <div id="status"></div>
 
   <script src="runner.js"></script>
@@ -90,7 +116,7 @@
         const t = setInterval(() => { if (window.jam) { clearInterval(t); resolve(window.jam) } }, 25)
       })
       const { dispatch } = jam
-      const { splitPackets, sendOne, run } = window.SpammerRunner
+      const { splitPackets, sendOne, run, toText, fromText } = window.SpammerRunner
 
       // Saved per JR profile.
       const store = jam.storage || {
@@ -101,6 +127,7 @@
       let steps = await store.get('steps', [])
       if (!Array.isArray(steps)) steps = []
       let runner = null
+      let drag = -1
 
       const setStatus = (text, isError) => {
         $('status').textContent = text || ''
@@ -121,26 +148,82 @@
         steps.forEach((step, i) => {
           const row = document.createElement('div')
           row.className = 'step' + (i === active ? ' active' : '')
-          const to = document.createElement('span')
-          to.className = 'to'
-          to.textContent = label(step.to)
-          const code = document.createElement('code')
-          code.textContent = step.text
+          const busy = !!runner
+          // drag handle: drag a line by it to move it
+          const grip = document.createElement('span')
+          grip.className = 'grip'
+          grip.textContent = '⋮⋮'
+          grip.title = 'Drag to move'
+          row.draggable = false
+          grip.onmousedown = () => { if (!busy) row.draggable = true }
+          row.ondragstart = (e) => { drag = i; row.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(i)) } catch (_) {} }
+          row.ondragend = () => { drag = -1; row.draggable = false; render() }
+          row.ondragover = (e) => {
+            if (drag < 0 || busy) return
+            e.preventDefault()
+            const r = row.getBoundingClientRect()
+            const below = e.clientY > r.top + r.height / 2
+            row.classList.toggle('drop-above', !below)
+            row.classList.toggle('drop-below', below)
+          }
+          row.ondragleave = () => row.classList.remove('drop-above', 'drop-below')
+          row.ondrop = (e) => {
+            e.preventDefault()
+            if (drag < 0 || busy) return
+            const r = row.getBoundingClientRect()
+            let to = e.clientY > r.top + r.height / 2 ? i + 1 : i
+            const [moved] = steps.splice(drag, 1)
+            if (drag < to) to--
+            steps.splice(to, 0, moved)
+            drag = -1
+            save()
+            render()
+          }
+          // where it goes
+          const to = document.createElement('select')
+          to.innerHTML = '<option value="server">Server</option><option value="game">My game</option>'
+          to.value = step.to === 'game' ? 'game' : 'server'
+          to.disabled = busy
+          to.onchange = () => { step.to = to.value; save() }
+          // the packet
+          const code = document.createElement('input')
+          code.className = 'pk'
+          code.value = step.text
           code.title = step.text
-          const delay = document.createElement('span')
-          delay.className = 'delay'
-          delay.textContent = `${step.delay}s`
+          code.spellcheck = false
+          code.disabled = busy
+          code.onchange = () => {
+            const text = code.value.trim()
+            if (!text) { code.value = step.text; return setStatus('A line needs a packet. Use ✕ to remove it.', true) }
+            step.text = text
+            code.title = text
+            save()
+          }
+          // the wait after it
+          const dlw = document.createElement('span')
+          dlw.className = 'dlw'
+          const delay = document.createElement('input')
+          delay.className = 'dl'
+          delay.type = 'number'
+          delay.min = String(window.SpammerRunner.MIN_DELAY)
+          delay.step = '0.05'
+          delay.value = String(step.delay)
+          delay.disabled = busy
+          delay.onchange = () => { step.delay = Math.max(window.SpammerRunner.MIN_DELAY, Number(delay.value) || 1); delay.value = String(step.delay); save() }
+          dlw.append(delay, 's')
           const remove = document.createElement('button')
           remove.title = 'Remove'
           remove.textContent = '✕'
-          remove.disabled = !!runner
+          remove.disabled = busy
           remove.onclick = () => { steps.splice(i, 1); save(); render() }
-          row.append(to, code, delay, remove)
+          row.append(grip, to, code, dlw, remove)
           list.appendChild(row)
         })
         $('run').disabled = !!runner || !steps.length
         $('stop').disabled = !runner
         $('clear').disabled = !!runner || !steps.length
+        $('export').disabled = !steps.length
+        $('import').disabled = !!runner
       }
 
       $('packets').addEventListener('keydown', (e) => {
@@ -176,6 +259,51 @@
       }
 
       $('clear').onclick = () => { steps = []; save(); render() }
+      $('export').onclick = () => {
+        const text = toText(steps)
+        try { require('electron').clipboard.writeText(text) } catch (_) { try { navigator.clipboard.writeText(text) } catch (_) {} }
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(new Blob([text + '\n'], { type: 'text/plain' }))
+        a.download = 'packet-list.txt'
+        document.body.appendChild(a)
+        a.click()
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove() }, 1000)
+        setStatus(`Exported ${steps.length} line${steps.length === 1 ? '' : 's'} (saved as packet-list.txt and copied).`)
+      }
+      $('import').onclick = () => {
+        $('io').classList.toggle('open')
+        if ($('io').classList.contains('open')) {
+          let clip = ''
+          try { clip = require('electron').clipboard.readText() } catch (_) {}
+          if (!$('ioText').value && fromText(clip).length) $('ioText').value = clip
+          $('ioText').focus()
+        }
+      }
+      $('ioCancel').onclick = () => { $('io').classList.remove('open') }
+      $('ioFile').onclick = () => $('ioPick').click()
+      $('ioPick').onchange = async (e) => {
+        const f = e.target.files[0]
+        e.target.value = ''
+        if (f) $('ioText').value = await f.text()
+      }
+      const doImport = (replace) => {
+        const got = fromText($('ioText').value)
+        if (!got.length) return setStatus('Nothing to import: paste a list or choose a file.', true)
+        steps = replace ? got : steps.concat(got)
+        save()
+        render()
+        $('io').classList.remove('open')
+        $('ioText').value = ''
+        setStatus(`${replace ? 'Replaced the list with' : 'Added'} ${got.length} line${got.length === 1 ? '' : 's'}.`)
+      }
+      $('ioAdd').onclick = () => doImport(false)
+      $('ioReplace').onclick = () => doImport(true)
+      // the game's Packet Spammer window uses the same list: pick up its changes
+      window.addEventListener('focus', async () => {
+        if (runner || drag >= 0) return
+        const fresh = await store.get('steps', [])
+        if (Array.isArray(fresh) && JSON.stringify(fresh) !== JSON.stringify(steps)) { steps = fresh; render() }
+      })
 
       $('run').onclick = () => {
         if (!steps.length) return

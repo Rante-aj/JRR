@@ -252,7 +252,7 @@ function createModBuilder ({ toolsDir, outDir, log = () => {}, edits = null, htt
         let age = Infinity
         try { age = Date.now() - fs.statSync(lock).mtimeMs } catch (_) {}
         if (age > 20 * 60 * 1000) { try { fs.rmSync(lock, { force: true }) } catch (_) {} ; continue }
-        if (tries > 240) throw new Error('another JR window is still building')
+        if (tries > 240) throw new Error('another JRR window is still building')
         await new Promise(resolve => setTimeout(resolve, 5000))
         const ready = file(job.version, job.antiIdle)
         if (ready) return ready

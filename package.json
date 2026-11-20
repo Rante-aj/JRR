@@ -1,8 +1,8 @@
 {
-  "name": "jr",
-  "productName": "JR",
-  "version": "0.3.0",
-  "description": "JR, a plugin toolkit for Animal Jam Classic by BradysLabs.",
+  "name": "jrr",
+  "productName": "JRR",
+  "version": "0.1.0",
+  "description": "JRR: a fork of JR (by BradysLabs) for Animal Jam Classic.",
   "author": "BradysLabs",
   "license": "MIT",
   "private": true,
@@ -19,13 +19,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/BradysLabs/JR.git"
+    "url": "https://github.com/Rante-aj/JRR.git"
   },
   "build": {
-    "appId": "com.bradyslabs.jr",
-    "productName": "JR",
+    "appId": "com.ranteaj.jrr",
+    "productName": "JRR",
     "copyright": "Copyright (c) 2026 BradysLabs",
-    "artifactName": "JR-Setup-${version}.${ext}",
+    "artifactName": "jrr-setup-${version}.${ext}",
     "files": [
       "src/**/*",
       "plugins/**/*",
@@ -48,7 +48,7 @@
     "nsis": {
       "oneClick": true,
       "perMachine": false,
-      "shortcutName": "JR"
+      "shortcutName": "JRR"
     },
     "mac": {
       "target": [
@@ -59,15 +59,15 @@
       "identity": null,
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
-      "artifactName": "JR-${version}-mac-${arch}.${ext}"
+      "artifactName": "jrr-${version}-mac-${arch}.${ext}"
     },
     "dmg": {
-      "title": "JR ${version}"
+      "title": "JRR ${version}"
     },
     "publish": {
       "provider": "github",
-      "owner": "BradysLabs",
-      "repo": "JR"
+      "owner": "Rante-aj",
+      "repo": "JRR"
     }
   },
   "dependencies": {

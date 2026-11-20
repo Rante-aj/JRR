@@ -162,7 +162,7 @@ function activityFor (windows, { invite, startedAt }) {
     state,
     state_url: invite,
     timestamps: { start: Math.floor(startedAt / 1000) },
-    assets: { large_image: 'discord-presence', large_text: 'JR by BradysLabs' },
+    assets: { large_image: 'discord-presence', large_text: 'JRR by Rante, based on JR by BradysLabs' },
     instance: false
   }
   return activity

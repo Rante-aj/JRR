@@ -1,9 +1,9 @@
 {
   "name": "Masterpiece Studio",
-  "description": "Turn a picture into a masterpiece file, or open one to see the picture inside.",
+  "description": "Turn a picture into a masterpiece file (layered format), or open one to see the picture inside.",
   "category": "Customize",
   "icon": "fa-palette",
-  "author": "BradysLabs",
+  "author": "Rante",
   "main": "index.html",
   "type": "ui"
 }

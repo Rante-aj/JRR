@@ -171,7 +171,7 @@ function showGate (info) {
     add('Try again', true, () => runGate(window.jr.gate.check))
   } else {
     const reason = { cancelled: 'Sign-in was cancelled.', sign_in_failed: 'Signing in didn’t work. Try again.', expired: 'Your sign-in expired. Sign in again.' }[info.reason]
-    set('Sign in to use JR', (reason ? reason + ' ' : '') + 'JR is for members of the JR Discord server. Sign in with Discord once and you’re set.', 'Not a member yet? Join the JR Discord first.')
+    set('Sign in to use JR', (reason ? reason + ' ' : '') + 'JR and JRR are for members of the JR Discord server. Sign in with Discord once and you’re set.', 'Not a member yet? Join the JR Discord first.')
     add('Sign in with Discord', true, () => runGate(window.jr.gate.signIn))
     add('Join the JR Discord', false, () => window.jr.openUrl(invite))
   }

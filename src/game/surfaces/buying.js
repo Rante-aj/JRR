@@ -211,4 +211,7 @@ const pets = catalogSurface({
   withId: (p, n) => { const u = Number(p[6]) >>> 0; const r = ((u & 0xffffff00) | (n & 0xff)) >>> 0; p[6] = String(r > 0x7fffffff ? r - 0x100000000 : r); return p }
 })
 
+// JR special animals (special-update)
+require('./special-animals')(animals)
+
 module.exports = [denShop, animals, pets]

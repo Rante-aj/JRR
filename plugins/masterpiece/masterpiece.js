@@ -1,6 +1,6 @@
 const NodeBuffer = typeof Buffer !== 'undefined' ? Buffer : (typeof require === 'function' ? require('buffer').Buffer : null)
-const WIDTH = 760
-const HEIGHT = 460
+const WIDTH = 711
+const HEIGHT = 434
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const TYPES = {
@@ -110,11 +110,76 @@ function decodeAmf (buf) {
   return readValue()
 }
 
-function encode (jpeg, uuid, type = 'aja2id') {
+
+// Writes a PNG shaped like the game's own layers: 8-bit RGBA, no extra chunks, one data chunk.
+const CRC_TABLE = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0 } return t })()
+function crc32 (buf) { let c = 0xFFFFFFFF; for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0 }
+
+function encodePng (rgba, w = WIDTH, h = HEIGHT) {
+  const zlib = require('zlib')
+  const stride = w * 4
+  const raw = NodeBuffer.alloc((stride + 1) * h)
+  for (let y = 0; y < h; y++) NodeBuffer.from(rgba.buffer, rgba.byteOffset + y * stride, stride).copy(raw, y * (stride + 1) + 1)
+  const chunk = (type, data) => {
+    const len = NodeBuffer.alloc(4)
+    len.writeUInt32BE(data.length)
+    const body = NodeBuffer.concat([NodeBuffer.from(type, 'latin1'), data])
+    const crc = NodeBuffer.alloc(4)
+    crc.writeUInt32BE(crc32(body))
+    return NodeBuffer.concat([len, body, crc])
+  }
+  const ihdr = NodeBuffer.alloc(13)
+  ihdr.writeUInt32BE(w, 0)
+  ihdr.writeUInt32BE(h, 4)
+  ihdr[8] = 8
+  ihdr[9] = 6
+  return NodeBuffer.concat([
+    NodeBuffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
+    chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw, { level: 9 })), chunk('IEND', NodeBuffer.alloc(0))
+  ])
+}
+
+// The layered format: the picture inside the file is an AMF3 object { v: 1, h: <height>, layers: [ { visible, opacity, png } ], w: <width>, active: <layer number> }
+function encodeLayers ({ width = WIDTH, height = HEIGHT, png, opacity = 1, visible = true, active = 0 }) {
+  const int = n => NodeBuffer.concat([NodeBuffer.from([0x04]), NodeBuffer.from(u29(n))])
+  const dbl = n => { const b = NodeBuffer.alloc(9); b[0] = 0x05; b.writeDoubleBE(n, 1); return b }
+  return NodeBuffer.concat([
+    NodeBuffer.from([0x0A, 0x0B, 0x01]),
+    amfString('v'), int(1),
+    amfString('h'), int(height),
+    amfString('layers'), NodeBuffer.from([0x09, 0x03, 0x01]),
+    NodeBuffer.from([0x0A, 0x01]),
+    amfString('visible'), NodeBuffer.from([visible ? 0x03 : 0x02]),
+    amfString('opacity'), Number.isInteger(opacity) ? int(opacity) : dbl(opacity),
+    amfString('png'), NodeBuffer.from([0x0C]), NodeBuffer.from(u29((png.length << 1) | 1)), png,
+    amfString(''),
+    amfString('w'), int(width),
+    amfString('active'), int(active),
+    amfString('')
+  ])
+}
+
+// Reads what is inside a file: the layered format, or the old plain picture.
+function readArt (b) {
+  if (b[0] === 0x0A) {
+    const data = decodeAmf(b)
+    const list = data && data.layers ? Object.keys(data.layers).sort((x, y) => x - y).map(k => data.layers[k]) : []
+    const layers = list.filter(l => l && l.png).map(l => ({
+      visible: l.visible !== false,
+      opacity: typeof l.opacity === 'number' ? l.opacity : 1,
+      image: NodeBuffer.from(l.png)
+    }))
+    if (!layers.length) throw new Error('This file has no layers inside.')
+    return { layered: true, width: data.w, height: data.h, layers }
+  }
+  return { layered: false, layers: [{ visible: true, opacity: 1, image: NodeBuffer.from(b) }] }
+}
+
+function encode (payload, uuid, type = 'aja2id') {
   if (!UUID_RE.test(uuid)) throw new Error('That is not a valid player uuid.')
   const zlib = require('zlib')
   const crypto = require('crypto')
-  const packed = zlib.deflateSync(encodeAmf({ b: jpeg, h: type, p: uuid }), { level: 9 })
+  const packed = zlib.deflateSync(encodeAmf({ b: payload, h: type, p: uuid }), { level: 9 })
   const { key, iv } = keysFor(uuid)
   const cipher = crypto.createCipheriv('aes-128-cbc', key, iv)
   return NodeBuffer.concat([cipher.update(packed), cipher.final()])
@@ -138,4 +203,4 @@ function decode (file, uuid) {
   return { image: NodeBuffer.from(data.b), type: data.h, uuid: data.p }
 }
 
-if (typeof module !== 'undefined') module.exports = { encode, decode, encodeAmf, decodeAmf, keysFor, UUID_RE, TYPES, WIDTH, HEIGHT }
+if (typeof module !== 'undefined') module.exports = { encode, decode, encodeLayers, encodePng, readArt, encodeAmf, decodeAmf, keysFor, UUID_RE, TYPES, WIDTH, HEIGHT }
