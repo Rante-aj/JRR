@@ -25,11 +25,15 @@ const valueTools = require(path.join(info.root, 'src', 'worth', 'value.js'))
 let worthByName = new Map()
 // Diamonds per unit (collar grades, BL, RIMs, Betas...), worked out from the wiki itself.
 let worthRates = new Map()
-try {
-  const worthItems = JSON.parse(require('fs').readFileSync(path.join(info.root, 'data', 'worth', 'values.json'), 'utf8')).items || []
-  worthByName = worthTools.indexWorth(worthItems)
-  worthRates = valueTools.buildRates(worthItems.map(it => ({ p: it.page, v: it.variant, g: it.grade, t: it.raw })))
-} catch (_) {}
+// JRR: the newest worth values (daily update or the copy that ships with JRR).
+const loadWorthTables = () => {
+  try {
+    const worthItems = require(path.join(info.root, 'src', 'worth', 'update.js')).loadWorth(info).items || []
+    worthByName = worthTools.indexWorth(worthItems)
+    worthRates = valueTools.buildRates(worthItems.map(it => ({ p: it.page, v: it.variant, g: it.grade, t: it.raw })))
+  } catch (_) {}
+}
+loadWorthTables()
 
 const inkFor = (hex) => (['#ededee', '#d9a441', '#ffffff'].includes(String(hex).toLowerCase()) ? '#0b0b0c' : '#ffffff')
 const time = (t) => new Date(t).toTimeString().slice(0, 8)
@@ -644,6 +648,7 @@ function renderTrade () {
   $('tradeNote').textContent = trade.status || 'Listed values from the Animal Jam Item Worth Wiki (CC BY-SA). Comparisons use shared numeric units; estimates are not guarantees.'
 }
 engine.events.on('items', () => { if (trade.active) renderTrade() })
+engine.events.on('worth', () => { loadWorthTables(); if (trade.active) renderTrade() }) // JRR: daily worth update
 engine.dispatch.onMessage({
   type: 'aj',
   message: 'ti',

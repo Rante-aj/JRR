@@ -39,7 +39,7 @@ const ONLY = opt('only', null)
 const OFFLINE = !!opt('offline', false)
 const OUT = path.resolve(opt('out', 'values.json'))
 const CACHE = path.resolve(opt('cache', '.cache'))
-const USER_AGENT = 'JRWorthCollector/1.0 (+https://github.com/BradysLabs/JR; weekly, rate-limited)'
+const USER_AGENT = 'JRRWorthCollector/1.0 (+https://github.com/Rante-aj/JRR; daily, rate-limited, only edited pages)'
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a)

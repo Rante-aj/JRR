@@ -1,0 +1,82 @@
+# Daily worth update (JRR).
+#
+# Once a day, runs the worth scraper (tools/worth-scraper) against the Animal Jam
+# Item Worth Wiki and publishes the result on the "worth-data" branch:
+#   values.json   every item's worth (what JRR uses)
+#   version.json  just the date and item count, so JRR can check cheaply
+# JRR downloads it when it starts, so players get the day's values without a new
+# release. Downloaded wiki pages are cached between runs, so after the first run
+# (about 35 minutes) only pages edited since are fetched again.
+#
+# It never touches main, so it doesn't start the Release workflow.
+# Run it by hand: Actions tab -> Daily worth update -> Run workflow.
+
+name: Daily worth update
+
+on:
+  schedule:
+    - cron: '17 9 * * *'   # every day at 09:17 UTC (1:17 am Pacific)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: worth-daily
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # The wiki pages downloaded last time (only edited pages are fetched again).
+      - uses: actions/cache@v4
+        with:
+          path: tools/worth-scraper/.cache
+          key: worth-pages-${{ github.run_id }}
+          restore-keys: worth-pages-
+
+      - name: Read the wiki
+        working-directory: tools/worth-scraper
+        run: node scrape.js --out "$RUNNER_TEMP/values.json"
+
+      - name: Check the result
+        run: |
+          node -e "
+            const v = require(process.env.RUNNER_TEMP + '/values.json')
+            const n = (v.items || []).length
+            console.log('items:', n, 'generatedAt:', v.generatedAt)
+            if (n < 10000 || !v.generatedAt) { console.error('Too few items - not publishing.'); process.exit(1) }
+            require('fs').writeFileSync(process.env.RUNNER_TEMP + '/version.json', JSON.stringify({ generatedAt: v.generatedAt, itemCount: n }) + '\n')
+          "
+
+      - name: Publish to the worth-data branch
+        # The branch only ever holds the latest copy (one commit, replaced each time),
+        # so the repo doesn't grow by 14 MB a day. Nothing is published if no worth changed.
+        run: |
+          set -e
+          mkdir out && cd out
+          git init -q
+          git config user.name "JRR worth bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          if git fetch -q --depth 1 origin worth-data 2>/dev/null; then git show FETCH_HEAD:values.json > "$RUNNER_TEMP/old.json" 2>/dev/null || true; fi
+          if [ -s "$RUNNER_TEMP/old.json" ] && node -e "
+               const a = require(process.env.RUNNER_TEMP + '/old.json'), b = require(process.env.RUNNER_TEMP + '/values.json')
+               process.exit(JSON.stringify(a.items) === JSON.stringify(b.items) ? 0 : 1)"; then
+            echo "No worth changed since the last update."; exit 0
+          fi
+          git checkout -q --orphan worth-data
+          cp "$RUNNER_TEMP/values.json" "$RUNNER_TEMP/version.json" .
+          printf '%s\n' "Daily worth data for JRR, made by .github/workflows/worth-daily.yml on main." "Values come from the Animal Jam Item Worth Wiki (CC BY-SA); every item keeps its source page." > README.md
+          git add values.json version.json README.md
+          git commit -q -m "Worth data $(date -u +%Y-%m-%d)"
+          git push -q --force origin worth-data
+          echo "Published."

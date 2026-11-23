@@ -25,6 +25,7 @@ module.exports = function createEngine (info) {
   const { ItemDatabase, packHash, PACKS } = req('game/items.js')
   const { rewriteStrings } = req('game/packs.js')
   const worthLabels = req('worth/labels.js')
+  const worthUpdate = req('worth/update.js') // JRR: daily worth update
   const { createWorthLookup } = req('worth/bubble.js')
   const { PluginHost } = req('plugins/host.js')
   const { readJson, writeJson } = req('profiles/files.js')
@@ -100,9 +101,19 @@ module.exports = function createEngine (info) {
   let worthLookup = null
   let worthItems = null
   const worthItemList = () => {
-    if (!worthItems) worthItems = JSON.parse(fs.readFileSync(path.join(info.root, 'data', 'worth', 'values.json'), 'utf8')).items || []
+    if (!worthItems) worthItems = worthUpdate.loadWorth(info).items || []
     return worthItems
   }
+  // JRR: newer worth values from the daily update, checked a few seconds after start.
+  setTimeout(async () => {
+    const r = await worthUpdate.refreshWorth(info)
+    if (r.updated) {
+      worthItems = null; labeler = null; worthLookup = null
+      log({ type: 'success', message: `Worth values updated: wiki as of ${String(r.generatedAt).slice(0, 10)} (${r.itemCount} items).` })
+      events.emit('worth')
+    } else if (r.error) log({ type: 'info', message: `Couldn\u2019t check for newer worth values (${r.error}); using the ones JRR has.` })
+    else log({ type: 'info', message: `Worth values are up to date (wiki as of ${String(r.generatedAt || '').slice(0, 10)}).` })
+  }, 5000)
   const addWorthToNames = async (buf) => {
     if (!labeler) labeler = worthLabels.createLabeler(worthItemList())
     // Only real item names get a label, so other game text is never touched.
