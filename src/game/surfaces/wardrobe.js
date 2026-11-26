@@ -149,7 +149,7 @@ const tradeWorth = {
 const outfits = {
   id: 'outfits',
   plugin: 'outfits',
-  buttons: [{ at: 'avatarinv', label: 'Save Outfit', icon: 'outfit' }],
+  buttons: [{ at: 'avatarcolors', label: 'Save Outfit', icon: 'outfit' }],
   view (state, ctx) {
     const list = ctx.surfaces.store('outfits').get('outfits', [])
     const api = ctx.shopApi()
@@ -214,7 +214,7 @@ const outfits = {
 const tryOn = {
   id: 'tryon',
   plugin: 'item-previewer',
-  buttons: [{ at: 'avatarinv', label: 'Try On', icon: 'tryon' }],
+  buttons: [{ at: 'avatarcolors', label: 'Try On', icon: 'tryon' }],
   init (ctx) {
     this.st = { colors: [], pack: null }
     const cp = ctx.application && ctx.application.clothingPreviews

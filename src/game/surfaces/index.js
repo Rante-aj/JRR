@@ -53,7 +53,9 @@ const ANCHORS = {
   pets: { pos: 'left' },
   masterpiece: { pos: 'left' },
   trade: { pos: 'left' },
-  pairs: { pos: 'left' }
+  pairs: { pos: 'left' },
+  // Adventures: JR's gear at the top right while in an adventure, left of the game's settings gear spot
+  questgear: { pos: 'left', round: 44, dx: 105 }
 }
 
 // The game's own fonts, best first, for JR's windows and buttons.
@@ -96,6 +98,8 @@ function createSurfaces ({ bridge, ctx, surfaces, enabled = () => true }) {
     /** Opens another surface's window (for buttons that lead elsewhere). */
     open (id, context) { return openSurface(id, null, context || {}) },
     isOpen: (id) => open.has(id),
+    /** Sends something straight to the game (src/game/bridge.js kinds, e.g. "f" favorites). */
+    game: (kind, value) => { try { bridge.send(kind, value) } catch (_) {} },
     state: (id) => stateOf(id),
     store: (pluginId) => fileStore(path.join(ctx.profileDir, 'plugin-data', pluginId))
   }

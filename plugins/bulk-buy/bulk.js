@@ -11,7 +11,7 @@
  */
 
 const DEN_LIST = '384'
-const MAX = 100
+const MAX = 999 // JRR: was 100
 const GAP = 500
 const REPLY_TIMEOUT = 6000
 
@@ -52,7 +52,8 @@ class BulkBuyer {
       { type: 'connection', message: 'ib', callback: ({ message }) => this._seen(message) },
       { type: 'connection', message: 'db', callback: ({ message }) => this._seen(message) },
       { type: 'aj', message: 'ib', callback: ({ message }) => this._answer('ib', message) },
-      { type: 'aj', message: 'db', callback: ({ message }) => this._answer('db', message) }
+      { type: 'aj', message: 'db', callback: ({ message }) => this._answer('db', message) },
+      { type: 'aj', message: 'il', callback: ({ message }) => this._added(message) } // JRR
     ]
     for (const h of this.hooks) dispatch.onMessage(h)
   }
@@ -73,7 +74,21 @@ class BulkBuyer {
     message.send = false
     const resolve = this.pending.resolve
     this.pending = null
+    this.boughtAt = Date.now() // JRR
     resolve(r)
+  }
+
+  // JRR: after each clothing purchase the server sends the new item as worn
+  // (%xt%il%-1%2%1%2%<name>%<color>%1%0%<slot>%<item>%). After a purchase of its own the
+  // game then puts it on properly, but it never saw JR's purchases, so it ended up
+  // thinking every copy was worn and you couldn't change clothes until you relogged.
+  // JR marks the copies it bought as not worn.
+  _added (message) {
+    if (!this.boughtAt || Date.now() - this.boughtAt > 3000 || !this.last || this.last.cmd !== 'ib') return
+    const v = message.value
+    // v[4] 2 = items changed, v[5] = new items worn (1) or not (0), v[9] = how many, v[12] = the item
+    if (!Array.isArray(v) || String(v[4]) !== '2' || String(v[5]) !== '1' || String(v[9]) !== '1' || String(v[12]) !== String(this.last.defId)) return
+    v[5] = '0'
   }
 
   /** Buys the last purchase `count` more times. Stops at the first refusal. */

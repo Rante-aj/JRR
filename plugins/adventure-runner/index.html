@@ -234,16 +234,23 @@
       </div>
 
       <div>
-        <div class="ar-section-title">Join</div>
+        <div class="ar-section-title">Start</div>
         <div class="ar-host">
+          <select id="joinMode" aria-label="How to start">
+            <option value="public">Join game (anyone, usually an empty game)</option>
+            <option value="own">Host my own (members)</option>
+            <option value="player">Join a player's game</option>
+          </select>
+        </div>
+        <div class="ar-host" id="hostRow">
           <input id="hostName" type="text" placeholder="Host's username" autocomplete="off" spellcheck="false" aria-label="Username of the player hosting the adventure" maxlength="23">
         </div>
-        <div class="ar-hint">They open the adventure from their den; you join, they press Start. Pick the same mode they chose.</div>
+        <div class="ar-hint" id="joinHint"></div>
       </div>
 
       <div class="ar-controls">
         <div id="modeToggle" class="ar-mode"></div>
-        <button id="startButton" class="ar-btn ar-start"><i class="fas fa-sign-in-alt"></i> Join</button>
+        <button id="startButton" class="ar-btn ar-start"><i class="fas fa-sign-in-alt"></i> Start</button>
         <button id="hereButton" class="ar-btn ar-here" title="Run the objectives in the adventure you're already in"><i class="fas fa-play"></i> Run here</button>
         <button id="stopButton" class="ar-btn ar-stop" disabled><i class="fas fa-stop"></i> Stop</button>
       </div>

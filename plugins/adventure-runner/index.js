@@ -3,6 +3,8 @@
  * step by step.
  *
  * Joining: %xt%o%qj%{room}%den<host>%<questId>%<hard 1/0>%0%
+ * Join game (the game's own Join, anyone can): %xt%o%qj%{room}%<room you're in>%<questId>%<hard 1/0>%0%, then Start (qs)
+ * Host my own (members): %xt%o%qjc%{room}%0%<questId>%<hard 1/0>%, then Start (qs)
  * Server:  %xt%qj%{room}%<1 joined / 0 refused>%...
  * The host starts the game; we follow them into the adventure room.
  *
@@ -39,6 +41,8 @@
 const { dispatch, application } = jam;
 
 const ADVENTURES = require('./adventures');
+let warnedFor = null; // the risky adventure whose warning was just shown (Start again within 20 s = go ahead)
+let warnedAt = 0;
 
 
 // ============================================================
@@ -81,9 +85,30 @@ const loopDelayInput = $('loopDelay');
 const prizeChoice = $('prizeChoice');
 const runCounterEl = $('runCounter');
 const hostInput = $('hostName');
+// How to start: 'public' (Join game), 'own' (Host my own) or 'player' (join a player's game).
+const joinModeEl = $('joinMode');
 
 const HOST_KEY = 'adventures.hostName';
 try { if (hostInput) hostInput.value = localStorage.getItem(HOST_KEY) || ''; } catch (e) { /* storage unavailable */ }
+const JOIN_MODE_KEY = 'adventures.joinMode';
+const JOIN_HINTS = {
+  public: 'Puts you in an open game of this adventure (almost always an empty one) and starts it. Works for nonmembers.',
+  own: 'Opens your own game and starts it. Hosting is for members.',
+  player: 'Joins the game a player opened. They press Start. Pick the same mode they chose.'
+};
+try { if (joinModeEl) joinModeEl.value = localStorage.getItem(JOIN_MODE_KEY) || 'public'; } catch (e) { /* storage unavailable */ }
+function renderJoinMode() {
+  const how = String(joinModeEl && joinModeEl.value || 'public');
+  try { const row = $('hostRow'); if (row && row.style) row.style.display = how === 'player' ? '' : 'none'; } catch (e) { /* no layout */ }
+  try { const hint = $('joinHint'); if (hint) hint.textContent = JOIN_HINTS[how] || ''; } catch (e) { /* no layout */ }
+}
+if (joinModeEl && typeof joinModeEl.addEventListener === 'function') {
+  joinModeEl.addEventListener('change', () => {
+    try { localStorage.setItem(JOIN_MODE_KEY, joinModeEl.value); } catch (e) { /* storage unavailable */ }
+    renderJoinMode();
+  });
+}
+renderJoinMode();
 
 
 // ============================================================
@@ -141,7 +166,13 @@ function cancelSleep() {
   }
 }
 
+// Diagnostic build: every step is written to JRR's log file straight away.
+function trace(what) {
+  try { if (application && typeof application.consoleMessage === 'function') application.consoleMessage({ type: 'debug', message: `Adventures trace: ${what}` }); } catch (e) { /* ignore */ }
+}
+
 function log(type, message) {
+  trace(`log ${type} start`);
   // Streaming mode: hide the real username in this window too.
   const streaming = jam.application && jam.application.streamingMode;
   if (streaming && typeof streaming.mask === 'function') message = streaming.mask(message);
@@ -156,6 +187,7 @@ function log(type, message) {
 
   // Keep the log from growing forever.
   while (logEl.childElementCount > 400) logEl.removeChild(logEl.firstChild);
+  trace('log done');
 }
 
 function setStatus(message) {
@@ -175,6 +207,7 @@ function hostDen() {
 }
 
 async function refreshRoom() {
+  trace('refreshRoom');
   try {
     currentRoom = (await dispatch.getState('room')) || null;
     const parsed = parseInt(await dispatch.getState('internalRoomId'), 10);
@@ -396,9 +429,11 @@ function makeContext(adventure) {
   const ctx = {
     choices: choicesFor(adventure),
     async send(template, delay = STEP_DELAY) {
+      trace(`send ${template}`);
       if (!running) throw new Stopped();
 
       const room = await refreshRoom();
+      trace(`send room ${room}`);
       if (!room) throw new Error('No room ID available.');
 
       if (template.includes('{player}')) {
@@ -411,7 +446,9 @@ function makeContext(adventure) {
         .replaceAll('{player}', String(playerId));
 
       log('send', `SEND ${packet}`);
+      trace('send to dispatch');
       await dispatch.sendRemoteMessage(packet);
+      trace('send sent');
 
       await sleep(delay);
       if (!running) throw new Stopped();
@@ -533,17 +570,26 @@ async function startRun(here = false) {
     setStatus(`Tick at least one under ${adventure.choices.label}.`);
     return;
   }
-  if (here) return runHere(adventure);
+  if (adventure.warning && !here && (warnedFor !== adventure.id || Date.now() - warnedAt > 20000)) {
+    warnedFor = adventure.id;
+    warnedAt = Date.now();
+    setStatus(`${adventure.warning} Press Start again to go ahead.`);
+    log('warn', `${adventure.name}: ${adventure.warning}`);
+    return;
+  }
+  warnedFor = null;
+  if (here && !(loopToggle && loopToggle.checked)) return runHere(adventure);
 
   if (!adventure.questId) {
     setStatus(`${adventure.name} can't be joined by name yet. Go into it, then press Run here.`);
     return;
   }
 
-  const host = hostDen();
+  const how = joinModeFor(adventure);
   const typedHost = String(hostInput ? hostInput.value : '').trim();
+  const host = how === 'player' ? hostDen() : null;
 
-  if (!host && (typedHost || !adventure.solo)) {
+  if (how === 'player' && !host && !here) {
     setStatus(typedHost
       ? `"${typedHost}" isn't a valid username.`
       : 'Type the username of the player whose adventure you want to join.');
@@ -551,11 +597,11 @@ async function startRun(here = false) {
     return;
   }
 
-  const looping = Boolean(loopToggle && loopToggle.checked);
+  const looping = Boolean(loopToggle && loopToggle.checked) && !adventure.joinOnly;
   const totalRuns = looping ? readInt(loopRunsInput, 0) : 1;   // 0 = until stopped
   const delayMs = readInt(loopDelayInput, 5) * 1000;
 
-  log('info', (host ? `Joining ${host.name}'s ${adventure.name}` : `Starting ${adventure.name} on your own`) + (looping ? ` (loop: ${totalRuns || 'until stopped'})` : ''));
+  log('info', (host ? `Joining ${host.name}'s ${adventure.name}` : how === 'own' ? `Hosting your own ${adventure.name}` : `Joining a ${adventure.name} game`) + (looping ? ` (loop: ${totalRuns || 'until stopped'})` : ''));
 
   running = true;
   setRunningUI(true);
@@ -567,7 +613,7 @@ async function startRun(here = false) {
       if (!running) throw new Stopped();
       setRunCounter(looping ? `Run ${run}${totalRuns ? ` / ${totalRuns}` : ''} · ${completed} done` : '');
 
-      await runOnce(adventure, host, looping, run > 1);
+      await runOnce(adventure, host, looping, run > 1, how, here && run === 1);
       completed++;
 
       if (!looping || (totalRuns && run >= totalRuns)) break;
@@ -641,7 +687,7 @@ async function runHere(adventure) {
   }
 }
 
-async function runOnce(adventure, host, leaveAfter, isRejoin) {
+async function runOnce(adventure, host, leaveAfter, isRejoin, how = 'public', alreadyIn = false) {
   activeObjects.clear();
   // Never carry an ID guessed in an earlier run into this one.
   playerId = null;
@@ -658,18 +704,24 @@ async function runOnce(adventure, host, leaveAfter, isRejoin) {
     // ---------- Join the host's game ----------
     // Note the room before joining, so a quick Start by the host isn't missed.
     const lobbyRoom = await refreshRoom();
-    if (host) {
+    if (alreadyIn) {
+      // Already inside (started from the automation window): play from here.
+    } else if (host) {
       await joinHost(ctx, adventure, host, isRejoin);
 
       // ---------- Wait for the host to start ----------
       setStatus(`Joined ${host.name}'s game. Waiting for them to start...`);
       await waitForRoomChange(lobbyRoom, HOST_START_TIMEOUT);
-    } else {
+    } else if (how === 'own') {
       await startSolo(ctx, adventure, lobbyRoom);
+    } else {
+      await joinPublic(ctx, adventure, lobbyRoom);
     }
-    log('ok', 'Adventure started.');
-    await ctx.gameLoaded();
-    if (adventure.afterStart) await adventure.afterStart(ctx);
+    if (!alreadyIn) log('ok', 'Adventure started.');
+    // Join-only adventures: JRR got you in and started it; you play it.
+    if (adventure.joinOnly) return;
+    if (!alreadyIn) await ctx.gameLoaded();
+    if (adventure.afterStart && !alreadyIn) await adventure.afterStart(ctx);
 
     // Only needed for adventures that pick things up; Bitter Sweets doesn't.
     if (!playerId) {
@@ -733,6 +785,12 @@ async function leaveAdventure(ctx) {
 const JOIN_ERRORS = {
   NLAND: 'Switch to a land animal first - this adventure only allows land animals.',
   NOCEAN: 'Switch to an ocean animal first - this adventure only allows ocean animals.',
+  NAIR: 'Switch to a flying animal first - this adventure only allows flying animals.',
+  NLANDAIR: 'Switch to a land or flying animal first.',
+  NM: 'Only members can do that here. Nonmembers: use Join game.',
+  NL: 'Your adventure level is too low for this adventure.',
+  NDL: 'Your adventure level is too low for hard mode. Try easy.',
+  NAIL: 'You can\'t join adventures from here. Go to a land or ocean room first.',
   NMEM: 'This adventure (or hard mode) is for members only.',
   NLVL: 'Your level is too low for this adventure (or for hard mode).'
 };
@@ -778,6 +836,93 @@ async function joinHost(ctx, adventure, host, isRejoin) {
     log('warn', message);
     await ctx.wait(REJOIN_RETRY_DELAY);
   }
+}
+
+// Join with no automation: sends the join packet, like the game's own buttons,
+// and leaves the rest (Play, the adventure) to you.
+let lastJoined = null;
+async function joinNow() {
+  if (running || !selected) return;
+  const adventure = selected;
+  if (adventure.warning && (warnedFor !== adventure.id || Date.now() - warnedAt > 20000)) {
+    warnedFor = adventure.id;
+    warnedAt = Date.now();
+    setStatus(`${adventure.warning} Press Join again to go ahead.`);
+    log('warn', `${adventure.name}: ${adventure.warning}`);
+    return;
+  }
+  warnedFor = null;
+  if (!adventure.questId) { setStatus(`${adventure.name} can't be joined from here.`); return; }
+  const how = joinModeFor(adventure);
+  const host = how === 'player' ? hostDen() : null;
+  if (how === 'player' && !host) {
+    setStatus('Type the username of the player whose adventure you want to join.');
+    return;
+  }
+  const room = await refreshRoom();
+  if (!room) { setStatus('Go into a room in Animal Jam first.'); return; }
+  const hardFlag = mode === 'hard' ? 1 : 0;
+  let packet;
+  if (how === 'player') packet = `%xt%o%qj%{room}%${host.den}%${adventure.questId}%${hardFlag}%0%`;
+  else if (how === 'own') packet = `%xt%o%qjc%{room}%0%${adventure.questId}%${hardFlag}%`;
+  else if (adventure.joinPacket) packet = adventure.joinPacket;
+  else {
+    let roomName = '';
+    try { roomName = String((await dispatch.getState('roomName')) || ''); } catch (e) { /* not known */ }
+    packet = `%xt%o%qj%{room}%${roomName || '1#1'}%${adventure.questId}%${hardFlag}%0%`;
+  }
+  packet = packet.replaceAll('{room}', String(room));
+  log('send', `SEND ${packet}`);
+  await dispatch.sendRemoteMessage(packet);
+  lastJoined = adventure.id;
+  setStatus(host ? `Asked to join ${host.name}'s ${adventure.name}.` : `Joining ${adventure.name}. Press Play in the game when you're ready.`);
+}
+
+// Which way to start: the Join mode picked, or (older windows without one)
+// a typed username = that player's game, else host your own if the
+// adventure can be done alone, else the game's own Join.
+function joinModeFor(adventure) {
+  const picked = String(joinModeEl && joinModeEl.value || '').trim();
+  if (picked === 'public' || picked === 'own' || picked === 'player') return picked;
+  if (String(hostInput ? hostInput.value : '').trim()) return 'player';
+  return adventure && adventure.solo ? 'own' : 'public';
+}
+
+// The game's own Join button: puts you in an open game of this adventure, or
+// a new empty one if nobody's waiting, then presses Start like the game does.
+// Nonmembers can do this (only hosting is for members).
+async function joinPublic(ctx, adventure, lobbyRoom) {
+  const hardFlag = mode === 'hard' ? 1 : 0;
+  setStatus(`Joining a ${adventure.name} game${adventure.modes.length > 1 ? ` (${mode})` : ''}...`);
+  let roomName = '';
+  try { roomName = String((await dispatch.getState('roomName')) || ''); } catch (e) { /* not known */ }
+  if (!roomName) throw new Error('Go into a room in Animal Jam first.');
+
+  joinReply = null;
+  seenObjects.clear();
+  // Seasonal adventures carry their own join packet (often a shared lobby).
+  await ctx.send(adventure.joinPacket || `%xt%o%qj%{room}%${roomName}%${adventure.questId}%${hardFlag}%0%`, 0);
+  // A shared lobby may just move you into its room instead of answering.
+  const deadline = Date.now() + JOIN_REPLY_TIMEOUT;
+  let movedIn = false;
+  while (!joinReply && Date.now() < deadline) {
+    await ctx.wait(100);
+    if ((await refreshRoom()) !== lobbyRoom) { movedIn = true; break; }
+  }
+  if (!joinReply && !movedIn) throw new Error('No answer from the game to the join request.');
+  if (joinReply && !joinReply.ok) {
+    const reason = joinReply.reason;
+    throw new Error(JOIN_ERRORS[reason] || JOIN_NOTES[reason] || `The game wouldn't let you join ${adventure.name} (reason: ${reason || 'unknown'}).`);
+  }
+  log('ok', 'Joined a game.');
+
+  // Some adventures take you straight in (shared lobbies, or ones that start
+  // as soon as you join); otherwise press Start (the game's Play button) once
+  // the waiting screen is up.
+  const waitIn = adventure.joinPacket ? 5000 : 1500;
+  for (let waited = 0; waited < waitIn && (await refreshRoom()) === lobbyRoom; waited += 250) await ctx.wait(250);
+  if ((await refreshRoom()) === lobbyRoom) await ctx.send('%xt%o%qs%{room}%0%', 0);
+  await waitForRoomChange(lobbyRoom, ROOM_WAIT_TIMEOUT * 2);
 }
 
 // Starts your own game of a solo adventure: create it, then press Start.
@@ -868,7 +1013,8 @@ function renderAdventureList() {
 
     const meta = document.createElement('span');
     meta.className = 'ar-meta';
-    meta.textContent = `${adventure.steps.length} objectives`;
+    meta.textContent = adventure.joinOnly ? 'Joins and starts it; you play' : `${adventure.steps.length} objectives`;
+    if (adventure.warning) meta.textContent = `\u26A0 ${meta.textContent}`;
 
     button.append(name, meta);
     button.addEventListener('click', () => {
@@ -947,11 +1093,14 @@ function renderSteps() {
 }
 
 function markStep(index, state) {
+  trace(`markStep ${index} ${state}`);
   const row = stepsEl.children[index];
   if (!row) return;
 
   row.className = `ar-step ${state}`;
-  const icon = row.querySelector('i');
+  // The in-game window's stand-in page has no querySelector: use the first child.
+  const icon = (row.children && row.children[0]) || (row.querySelector && row.querySelector('i'));
+  if (!icon) return;
 
   icon.className = {
     active: 'fas fa-spinner fa-spin',
@@ -973,7 +1122,7 @@ function setRunningUI(isRunning) {
 }
 
 function renderAll() {
-  if (hostInput) hostInput.placeholder = selected && selected.solo ? 'Host (leave empty to play alone)' : 'Host\'s username';
+  if (hostInput) hostInput.placeholder = 'Host\'s username';
   renderAdventureList();
   renderModes();
   renderChoices();

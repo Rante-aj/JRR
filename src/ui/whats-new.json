@@ -1,4 +1,46 @@
 {
+  "0.1.1": {
+    "fork": true,
+    "date": "2026-11",
+    "items": [
+      {
+        "title": "Adventure automations",
+        "text": "The gear button in adventures runs Bitter Sweets, Phantoms (easy and hard), Twists and Turns, Jamaaliday Rescue, Special Delivery, New Year’s Fortune, Spring Festival, Battle for the Beacon, Graham’s Workshop, Tiki Trouble and The Forgotten Desert, with loops and Join again if kicked."
+      },
+      {
+        "title": "Prize screens",
+        "text": "Automations open prize chests on the real prize screen, tick what they took and press OK / Take for you."
+      },
+      {
+        "title": "Jammer Wall",
+        "text": "Jammer Wall popups no longer appear."
+      },
+      {
+        "title": "Shop Explorer",
+        "text": "Shops in every den you visit (never your own) are read on their own, even with Shop Explorer closed. Open a shop from the list in one click."
+      },
+      {
+        "title": "Favorite items",
+        "text": "Point at any item and click its star. The ★ tab next to Clothes and Trade shows your favorites (any color, or exact color only), and a popup tells you when a shop you’re in has one."
+      },
+      {
+        "title": "Favorites in trade lists",
+        "text": "A green square marks your favorites in other players’ trade lists. The trade button under the Jam-A-Gram button lists the favorites in this room’s trade lists; click one to open that player’s trade list. Turn on Check trades automatically in the ★ tab’s Settings."
+      },
+      {
+        "title": "Buy More",
+        "text": "Type how many to buy (up to 999), and bought copies no longer get stuck as worn."
+      },
+      {
+        "title": "Daily item worth",
+        "text": "Item worth values update every day."
+      },
+      {
+        "title": "Edit Animal",
+        "text": "Save Outfit and Try On sit next to Glow, so they no longer cover the search bar."
+      }
+    ]
+  },
   "0.1.0": {
     "fork": true,
     "date": "2026-11",

@@ -1,6 +1,6 @@
 {
   "name": "Shop Explorer",
-  "description": "Lists everything for sale in every My Shop in the den you're in, with Item Worth Wiki values so deals stand out.",
+  "description": "Lists everything for sale in every My Shop you scan, with Item Worth Wiki values. Keeps every den you scan so you can search them all, and opens the shop for you (Go / Open).",
   "category": "Trading",
   "icon": "fa-store",
   "author": "BradysLabs",

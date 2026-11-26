@@ -73,6 +73,16 @@ const TEXT = [
   ['src/config.js', "invite: 'https://discord.gg/ENu6SpVrwn'", "invite: 'https://discord.gg/cPEkEnBNVX'"],
   ['src/game/skin/jr-skin.js', 'JR never sees your password.', '{N} never sees your password.'],
   ['src/ui/picker.html', "JR only sees your Discord name and whether you're in the JR server.", "{N} only sees your Discord name and whether you're in the JR server."],
+  // JR's tests expect the JR name in two places
+  ['test/game.test.js', '/<title>JR<\\/title>\\s*<script src="jr-skin.js">', '/<title>{N}<\\/title>\\s*<script src="jr-skin.js">'],
+  ['test/profiles.test.js', '/already open in another JR window/', '/already open in another {N} window/'],
+  // GitHub jobs: the Mac build finds the fork's file names and can build a chosen commit;
+  // the automatic Windows release only runs by hand (releases are made by hand)
+  ['.github/workflows/mac.yml', 'FILE="dist-$ARCH/JR-$VERSION-mac-$ARCH.dmg"', 'FILE="dist-$ARCH/{S}-$VERSION-mac-$ARCH.dmg"'],
+  ['.github/workflows/mac.yml', '          name: JR-mac\n', '          name: {N}-mac\n'],
+  ['.github/workflows/mac.yml', '        required: true\n', '        required: true\n      ref:\n        description: Code to build (leave empty for the code the tag points to; main = the newest code)\n        required: false\n'],
+  ['.github/workflows/mac.yml', '          ref: ${{ env.TAG }}', '          ref: ${{ inputs.ref || env.TAG }}'],
+  ['.github/workflows/release.yml', 'on:\n  push:\n    branches: [main]\n  workflow_dispatch:', '# {N}: only runs by hand - {N} releases are built on Windows and uploaded by hand.\non:\n  workflow_dispatch:'],
   ['src/ui/engine.js', "notify: ({ title = 'JR', body = '', force = false } = {}) => {", "notify: ({ title = '{N}', body = '', force = false } = {}) => {"]
 ]
 const TEXT_FILES = [...new Set(TEXT.map(t => t[0]))]
@@ -155,8 +165,20 @@ const entry = {
     { title: 'Jam-A-Gram favourites', text: 'Star a background and an icon; new Jam-A-Grams start on them.' }
   ]
 }
-const out = { [version]: entry }
-for (const k of Object.keys(news)) if (k !== version && news[k].fork) out[k] = news[k]
+// Later versions: their own notes from tools\fork-notes.json ({"0.1.1": {"items": [{title, text}]}}).
+// The full feature list above stays as the first release (0.1.0).
+let notes = {}
+try { notes = JSON.parse(fs.readFileSync(path.join(root, 'tools', 'fork-notes.json'), 'utf8')) || {} } catch (_) {}
+const vnum = (v) => String(v).split('.').map(n => parseInt(n, 10) || 0)
+const older = (a, b) => { const x = vnum(a); const y = vnum(b); for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) < (y[i] || 0); return false }
+const out = {}
+out[version] = notes[version] && Array.isArray(notes[version].items)
+  ? { fork: true, date: notes[version].date || entry.date, items: notes[version].items }
+  : entry
+for (const v of Object.keys(notes).sort((a, b) => older(a, b) ? 1 : -1)) {
+  if (v !== version && older(v, version) && Array.isArray(notes[v].items)) out[v] = { fork: true, date: notes[v].date || entry.date, items: notes[v].items }
+}
+if (version !== '0.1.0' && older('0.1.0', version)) out['0.1.0'] = entry
 fs.writeFileSync(at('src/ui/whats-new.json'), JSON.stringify(out, null, 2) + '\n')
 console.log(`  What's new: entry for ${version}`)
 // Logos: the same light rounded square with the new name (tools\fork-assets)
@@ -177,7 +199,7 @@ for (const f of TEXT_FILES) {
   let text = fs.readFileSync(FILES.includes(f) ? at(f) : backup(f), 'utf8')
   for (const [file, from, to] of TEXT) {
     if (file !== f || !text.includes(from)) continue
-    text = text.split(from).join(to.split('{N}').join(name))
+    text = text.split(from).join(to.split('{N}').join(name).split('{S}').join(slug))
     done.add(file + '|' + from)
   }
   fs.writeFileSync(at(f), text)

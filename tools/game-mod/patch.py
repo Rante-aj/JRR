@@ -1475,5 +1475,9 @@ exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'artpic.py'),
 exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'clothes.py'), encoding='utf-8').read())
 exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'jag.py'), encoding='utf-8').read())
 exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'brand.py'), encoding='utf-8').read())
+exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shopx.py'), encoding='utf-8').read())
+exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'advgear.py'), encoding='utf-8').read())
+exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'rewards.py'), encoding='utf-8').read())
+exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'favs.py'), encoding='utf-8').read())
 print('ok')
 
