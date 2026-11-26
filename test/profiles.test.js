@@ -68,7 +68,7 @@ test('a lock held by another running process is respected', () => {
   const store = new ProfileStore(tmp())
   const a = store.create('A')
   fs.writeFileSync(path.join(store.dirOf(a.id), 'profile.lock'), String(process.ppid))
-  assert.throws(() => store.open(a.id), /already open in another JR window/)
+  assert.throws(() => store.open(a.id), /already open in another JRR? window/)
 })
 
 test('a lock nobody has refreshed is taken over, even if its process number is in use again', () => {

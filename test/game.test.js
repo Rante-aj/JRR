@@ -73,7 +73,7 @@ test('game copy: built once, patched, rebuilt when AJ updates', () => {
   assert.match(preload, /exposeInMainWorld\("jrSettingsRows"/)
   assert.match(preload, /exposeInMainWorld\("jrSettingToggle"/)
   assert.doesNotThrow(() => new Function(preload))
-  assert.match(a.read('gui/index.html').toString(), /<title>JR<\/title>\s*<script src="jr-skin.js"><\/script>\s*<script src="jr-ingame.js"><\/script>/)
+  assert.match(a.read('gui/index.html').toString(), /<title>JRR?<\/title>\s*<script src="jr-skin.js"><\/script>\s*<script src="jr-ingame.js"><\/script>/)
   assert.match(a.read('gui/jr-ingame.js').toString(), /window\.jrIngame = \{/)
   assert.match(a.read('index.js').toString(), /config\.jrToken = arg\('jr-token'\)/)
   assert.doesNotThrow(() => new Function(a.read('index.js').toString().replace('const {app} = require("electron");', 'const app = { on () {} };')))

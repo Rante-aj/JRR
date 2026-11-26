@@ -78,12 +78,12 @@ test('surfaces: every plugin has a window, and each window draws only known part
 test('surfaces: game screens get buttons, and turned-off plugins lose theirs', () => {
   const all = setup().surfaces.anchors()
   assert.deepEqual(all.avatar.b.map(b => b.l), ['Worth'])
-  assert.deepEqual(all.avatarinv.b.map(b => b.l), ['Save Outfit', 'Try On'])
-  assert.deepEqual(all.avatarcolors.b.map(b => b.l), ['Glow'])
+  assert.ok(!all.avatarinv, 'Save Outfit and Try On sit next to Glow now')
+  assert.deepEqual(all.avatarcolors.b.map(b => b.l), ['Save Outfit', 'Try On', 'Glow'])
   assert.ok(!all.chat && !all.hud, 'chat bar and map get the game-style buttons instead')
   assert.deepEqual(all.artstudio.b, [{ id: 'picture', l: 'Picture', i: 'picture', local: 'picture' }])
   const some = setup((id) => id !== 'glow-picker').surfaces.anchors()
-  assert.ok(!some.avatarcolors)
+  assert.deepEqual(some.avatarcolors.b.map(b => b.l), ['Save Outfit', 'Try On'])
 })
 
 test('surfaces: clicks reach the plugin and the window updates once', async () => {

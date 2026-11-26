@@ -4,6 +4,8 @@
  *   1. takes the temporary window-redraw logging out of src/game/surfaces/play.js
  *   2. sets the version to 0.1.1 (package.json, and package-lock.json if it's there)
  *   3. adds the 0.1.1 entry to What's new (src/ui/whats-new.json)
+ *   4. updates three tests that still expected JR's name, and the Save Outfit / Try On buttons
+ *      under the inventory (they moved next to Glow)
  *   node "<JR folder>\tools\release-0.1.1\prepare.js"        (add --undo to put it all back)
  * Running it again changes nothing.
  */
@@ -73,5 +75,25 @@ const ENTRY = {
     if (d[TO]) say(`whats-new.json: ${TO} entry already there`)
     else { fs.writeFileSync(f, JSON.stringify({ [TO]: ENTRY, ...d }, null, 2) + '\n'); say(`whats-new.json: ${TO} entry added`) }
   } else if (d[TO]) { delete d[TO]; fs.writeFileSync(f, JSON.stringify(d, null, 2) + '\n'); say(`whats-new.json: ${TO} entry removed`) }
+}
+// 4. tests that still expected the old name and the old button spot
+const TESTS = [
+  ['test/game.test.js', '/<title>JR<\\/title>\\s*<script src="jr-skin.js">', '/<title>JRR?<\\/title>\\s*<script src="jr-skin.js">'],
+  ['test/profiles.test.js', '/already open in another JR window/', '/already open in another JRR? window/'],
+  ['test/surfaces.test.js', "  assert.deepEqual(all.avatarinv.b.map(b => b.l), ['Save Outfit', 'Try On'])\n  assert.deepEqual(all.avatarcolors.b.map(b => b.l), ['Glow'])\n", "  assert.ok(!all.avatarinv, 'Save Outfit and Try On sit next to Glow now')\n  assert.deepEqual(all.avatarcolors.b.map(b => b.l), ['Save Outfit', 'Try On', 'Glow'])\n"],
+  ['test/surfaces.test.js', '  assert.ok(!some.avatarcolors)\n', "  assert.deepEqual(some.avatarcolors.b.map(b => b.l), ['Save Outfit', 'Try On'])\n"]
+]
+for (const [rel, a, b] of TESTS) {
+  const f = file(...rel.split('/'))
+  if (!fs.existsSync(f)) { say(rel + ': not found (skipped)'); continue }
+  let s = fs.readFileSync(f, 'utf8')
+  const crlf = s.includes('\r\n')
+  s = s.replace(/\r\n/g, '\n')
+  const [from, to] = undo ? [b, a] : [a, b]
+  if (s.includes(to)) { say(rel + ': already updated'); continue }
+  if (!s.includes(from)) { say(rel + ': not the version this was made for (skipped)'); continue }
+  s = s.replace(from, to)
+  fs.writeFileSync(f, crlf ? s.replace(/\n/g, '\r\n') : s)
+  say(rel + (undo ? ': put back' : ': updated'))
 }
 console.log('Done.')
